@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Client 54.69.105.151
+# Server 54.191.185.59
+
+CLIENT=ubuntu@$2
+SERVER=ubuntu@$1
+SERVER2=ubuntu@$3
+
+CLIENT_DIR=/home/ubuntu/mps_client/
+SERVER_DIR=/home/ubuntu/mps_server/
+SERVER2_DIR=/home/ubuntu/mps_server/
+
+scp ./config.properties $CLIENT:$CLIENT_DIR
+scp ./config.properties $SERVER:$SERVER_DIR
+scp ./config.properties $SERVER2:$SERVER2_DIR
+
+

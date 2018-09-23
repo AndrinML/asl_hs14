@@ -1,0 +1,124 @@
+--
+-- PostgreSQL database dump
+--
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
+
+SET search_path = public, pg_catalog;
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+--
+-- Name: mps_message; Type: TABLE; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE TABLE mps_message (
+    m_message_id integer NOT NULL,
+    m_sender_id integer,
+    m_receiver_id integer,
+    m_queue_id integer,
+    m_message_body text,
+    m_arrival_time timestamp without time zone
+);
+
+
+ALTER TABLE public.mps_message OWNER TO mps_admin;
+
+--
+-- Name: mps_message_m_message_id_seq; Type: SEQUENCE; Schema: public; Owner: mps_admin
+--
+
+CREATE SEQUENCE mps_message_m_message_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.mps_message_m_message_id_seq OWNER TO mps_admin;
+
+--
+-- Name: mps_message_m_message_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: mps_admin
+--
+
+ALTER SEQUENCE mps_message_m_message_id_seq OWNED BY mps_message.m_message_id;
+
+
+--
+-- Name: mps_queue; Type: TABLE; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE TABLE mps_queue (
+    q_queue_id integer NOT NULL
+);
+
+
+ALTER TABLE public.mps_queue OWNER TO mps_admin;
+
+--
+-- Name: m_message_id; Type: DEFAULT; Schema: public; Owner: mps_admin
+--
+
+ALTER TABLE ONLY mps_message ALTER COLUMN m_message_id SET DEFAULT nextval('mps_message_m_message_id_seq'::regclass);
+
+
+--
+-- Name: pk_message_id; Type: CONSTRAINT; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+ALTER TABLE ONLY mps_message
+    ADD CONSTRAINT pk_message_id PRIMARY KEY (m_message_id);
+
+
+--
+-- Name: pk_queue_id; Type: CONSTRAINT; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+ALTER TABLE ONLY mps_queue
+    ADD CONSTRAINT pk_queue_id PRIMARY KEY (q_queue_id);
+
+
+--
+-- Name: fk_queue_id; Type: FK CONSTRAINT; Schema: public; Owner: mps_admin
+--
+
+ALTER TABLE ONLY mps_message
+    ADD CONSTRAINT fk_queue_id FOREIGN KEY (m_queue_id) REFERENCES mps_queue(q_queue_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+--
+-- PostgreSQL database dump complete
+--
+

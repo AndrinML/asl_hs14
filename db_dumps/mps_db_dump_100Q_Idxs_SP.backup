@@ -1,0 +1,386 @@
+--
+-- PostgreSQL database dump
+--
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
+
+SET search_path = public, pg_catalog;
+
+--
+-- Name: delete_queue(integer); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION delete_queue(queue_id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$BEGIN
+  DELETE FROM mps_queue
+  WHERE q_queue_id = queue_id;
+END;$$;
+
+
+ALTER FUNCTION public.delete_queue(queue_id integer) OWNER TO mps_admin;
+
+--
+-- Name: get_message_from_queue(integer, integer); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION get_message_from_queue(sender_id integer, queue_id integer, OUT o_message_id integer, OUT o_message_body text) RETURNS record
+    LANGUAGE plpgsql
+    AS $$BEGIN
+  SELECT m_message_id, m_message_body FROM mps_message
+  INTO o_message_id, o_message_body
+  WHERE (m_receiver_id IS NULL OR m_receiver_id = sender_id) AND m_queue_id = queue_id
+  ORDER BY m_arrival_time DESC
+  LIMIT 1;
+END;$$;
+
+
+ALTER FUNCTION public.get_message_from_queue(sender_id integer, queue_id integer, OUT o_message_id integer, OUT o_message_body text) OWNER TO mps_admin;
+
+--
+-- Name: get_message_from_queue_with_delete(integer, integer); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION get_message_from_queue_with_delete(sender_id integer, queue_id integer, OUT o_message_id integer, OUT o_message_body text) RETURNS record
+    LANGUAGE plpgsql
+    AS $$BEGIN
+
+  DELETE FROM mps_message
+  WHERE m_message_id = (SELECT m_message_id FROM mps_message
+	WHERE (m_receiver_id IS NULL OR m_receiver_id = sender_id) AND m_queue_id = queue_id
+	ORDER BY m_arrival_time DESC
+	LIMIT 1)
+  RETURNING m_message_id, m_message_body
+  INTO o_message_id, o_message_body;
+  
+END;$$;
+
+
+ALTER FUNCTION public.get_message_from_queue_with_delete(sender_id integer, queue_id integer, OUT o_message_id integer, OUT o_message_body text) OWNER TO mps_admin;
+
+--
+-- Name: get_message_from_receiver(integer, integer); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION get_message_from_receiver(sender_id integer, receiver_id integer, OUT o_message_id integer, OUT o_message_body text) RETURNS record
+    LANGUAGE plpgsql
+    AS $$BEGIN
+  SELECT m_message_id, m_message_body FROM mps_message
+  INTO o_message_id, o_message_body
+  WHERE m_receiver_id = sender_id AND m_sender_id = receiver_id
+  ORDER BY m_arrival_time DESC
+  LIMIT 1;
+END;$$;
+
+
+ALTER FUNCTION public.get_message_from_receiver(sender_id integer, receiver_id integer, OUT o_message_id integer, OUT o_message_body text) OWNER TO mps_admin;
+
+--
+-- Name: get_queue_from_receiver(integer); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION get_queue_from_receiver(receiver_id integer, OUT o_queue_id integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$BEGIN
+  SELECT m_queue_id FROM mps_message
+  INTO o_queue_id
+  WHERE m_receiver_id = receiver_id
+  ORDER BY m_arrival_time DESC
+  LIMIT 1;
+END;$$;
+
+
+ALTER FUNCTION public.get_queue_from_receiver(receiver_id integer, OUT o_queue_id integer) OWNER TO mps_admin;
+
+--
+-- Name: insert_message(integer, integer, integer, text); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION insert_message(sender_id integer, receiver_id integer, queue_id integer, message text, OUT o_message_id integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$BEGIN
+  INSERT INTO mps_message (m_sender_id, m_receiver_id, m_queue_id, m_message_body, m_arrival_time)
+  VALUES (sender_id, receiver_id, queue_id, message, now())
+  RETURNING m_message_id INTO o_message_id;
+END;$$;
+
+
+ALTER FUNCTION public.insert_message(sender_id integer, receiver_id integer, queue_id integer, message text, OUT o_message_id integer) OWNER TO mps_admin;
+
+--
+-- Name: insert_queue(integer); Type: FUNCTION; Schema: public; Owner: mps_admin
+--
+
+CREATE FUNCTION insert_queue(queue_id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$BEGIN
+  INSERT INTO mps_queue (q_queue_id) 
+  SELECT queue_id 
+  WHERE NOT EXISTS 
+    (SELECT 1 FROM mps_queue 
+    WHERE q_queue_id = queue_id);
+END;$$;
+
+
+ALTER FUNCTION public.insert_queue(queue_id integer) OWNER TO mps_admin;
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+--
+-- Name: mps_message; Type: TABLE; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE TABLE mps_message (
+    m_message_id integer NOT NULL,
+    m_sender_id integer,
+    m_receiver_id integer,
+    m_queue_id integer,
+    m_message_body text,
+    m_arrival_time timestamp without time zone
+);
+
+
+ALTER TABLE public.mps_message OWNER TO mps_admin;
+
+--
+-- Name: mps_message_m_message_id_seq; Type: SEQUENCE; Schema: public; Owner: mps_admin
+--
+
+CREATE SEQUENCE mps_message_m_message_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.mps_message_m_message_id_seq OWNER TO mps_admin;
+
+--
+-- Name: mps_message_m_message_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: mps_admin
+--
+
+ALTER SEQUENCE mps_message_m_message_id_seq OWNED BY mps_message.m_message_id;
+
+
+--
+-- Name: mps_queue; Type: TABLE; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE TABLE mps_queue (
+    q_queue_id integer NOT NULL
+);
+
+
+ALTER TABLE public.mps_queue OWNER TO mps_admin;
+
+--
+-- Name: m_message_id; Type: DEFAULT; Schema: public; Owner: mps_admin
+--
+
+ALTER TABLE ONLY mps_message ALTER COLUMN m_message_id SET DEFAULT nextval('mps_message_m_message_id_seq'::regclass);
+
+
+--
+-- Data for Name: mps_message; Type: TABLE DATA; Schema: public; Owner: mps_admin
+--
+
+COPY mps_message (m_message_id, m_sender_id, m_receiver_id, m_queue_id, m_message_body, m_arrival_time) FROM stdin;
+\.
+
+
+--
+-- Name: mps_message_m_message_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mps_admin
+--
+
+SELECT pg_catalog.setval('mps_message_m_message_id_seq', 1, false);
+
+
+--
+-- Data for Name: mps_queue; Type: TABLE DATA; Schema: public; Owner: mps_admin
+--
+
+COPY mps_queue (q_queue_id) FROM stdin;
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+\.
+
+
+--
+-- Name: pk_message_id; Type: CONSTRAINT; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+ALTER TABLE ONLY mps_message
+    ADD CONSTRAINT pk_message_id PRIMARY KEY (m_message_id);
+
+
+--
+-- Name: pk_queue_id; Type: CONSTRAINT; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+ALTER TABLE ONLY mps_queue
+    ADD CONSTRAINT pk_queue_id PRIMARY KEY (q_queue_id);
+
+
+--
+-- Name: idx_arrival_time_ordering; Type: INDEX; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE INDEX idx_arrival_time_ordering ON mps_message USING btree (m_sender_id DESC);
+
+
+--
+-- Name: idx_queue_ordering; Type: INDEX; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE INDEX idx_queue_ordering ON mps_queue USING btree (q_queue_id);
+
+
+--
+-- Name: idx_receiver_and_queue_ordering; Type: INDEX; Schema: public; Owner: mps_admin; Tablespace: 
+--
+
+CREATE INDEX idx_receiver_and_queue_ordering ON mps_message USING btree (m_receiver_id, m_queue_id);
+
+
+--
+-- Name: fk_queue_id; Type: FK CONSTRAINT; Schema: public; Owner: mps_admin
+--
+
+ALTER TABLE ONLY mps_message
+    ADD CONSTRAINT fk_queue_id FOREIGN KEY (m_queue_id) REFERENCES mps_queue(q_queue_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+--
+-- PostgreSQL database dump complete
+--
+

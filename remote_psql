@@ -1,0 +1,36 @@
+#!/bin/bash
+
+HOST=ajenal@dryad10.ethz.ch
+
+sudo vpnc ethz
+
+ssh $HOST
+
+mkdir /mnt/local/ajenal
+
+exit
+
+scp postgresql-9.3.5.tar.gz $HOST:/mnt/local/ajenal/
+
+ssh $HOST
+
+cd /mnt/local/ajenal/
+
+tar -xf postgresql-9.3.5.tar.gz
+
+cd postgresql-9.3.5/
+
+./configure --prefix="/mnt/local/ajenal/postgres"
+
+make
+
+make install
+
+LD_LIBRARY_PATH=/mnt/local/ajenal/postgres/lib
+
+export LD_LIBRARY_PATH
+
+/mnt/local/ajenal/postgres/bin/initdb -D /mnt/local/ajenal/postgres/db/
+
+# /mnt/local/ajenal/postgres/bin/postgres -D /mnt/local/ajenal/postgres/db/ > logfile -p 7087 -i -k /mnt/local/ajenal/ &
+

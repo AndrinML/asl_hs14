@@ -1,0 +1,24 @@
+#!/bin/bash
+
+## Copy all necesarry files to the remote host
+
+if [ ! -n "$1" ]; then
+    echo 'no argument passed'
+    exit
+fi
+
+REMOTE=ubuntu@$1
+DIR=/home/ubuntu/mps_server/
+
+scp -r /home/andrin/Documents/ETH/ASL/project/mps_server/src $REMOTE:$DIR
+
+scp /home/andrin/Documents/ETH/ASL/project/mps_server/build.xml $REMOTE:$DIR
+
+scp /home/andrin/Documents/ETH/ASL/project/mps_server/runServer $REMOTE:$DIR
+
+scp /home/andrin/Documents/ETH/ASL/project/mps_server/MPS.jar $REMOTE:$DIR
+
+scp -r /home/andrin/Documents/ETH/ASL/project/mps_server/lib $REMOTE:$DIR
+
+scp -r /home/andrin/Documents/ETH/ASL/project/mps_server/logs $REMOTE:$DIR
+
